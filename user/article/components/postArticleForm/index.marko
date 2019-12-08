@@ -1,0 +1,87 @@
+import cookies from "zoia-cookies"
+import uuid from "uuid/v1"
+
+class {
+  onCreate(input, out) {
+    this.t = out.global.t;
+  }
+  onSaveError(res) {}
+  onSaveSuccess() {}
+}
+
+<div>
+  <zoiaForm key="postArticleForm" data=[
+    [
+      {
+        id: "firstName",
+        type: "text",
+        label: out.global.t["First Name"],
+        css: "uk-input uk-form-width-medium",
+        mandatory: true,
+        autoFocus: true
+      },
+      {
+        id: "middleName",
+        type: "text",
+        label: out.global.t["Middle Name"],
+        css: "uk-input uk-form-width-medium",
+        mandatory: true
+      },
+      {
+        id: "lastName",
+        type: "text",
+        label: out.global.t["Last Name"],
+        css: "uk-input uk-form-width-medium",
+        mandatory: true
+      }
+    ],
+    {
+      id: "articleTitle",
+      type: "text",
+      label: out.global.t["Article Title"],
+      css: "uk-input uk-form-width-large",
+      mandatory: true
+    },
+    {
+      id: "articleContent",
+      type: "textarea",
+      label: out.global.t["Content"],
+      css: "uk-textarea uk-width-1-1",
+      rows: 8,
+      mandatory: true
+    },
+    {
+      id: "articleBibliography",
+      type: "textarea",
+      label: out.global.t["Bibliography"],
+      css: "uk-textarea uk-form-width-large",
+      rows: 4,
+      mandatory: true
+    },
+    {
+      id: "captcha",
+      type: "captcha",
+      label: out.global.t["Captcha"],
+      css: "uk-input uk-form-width-small",
+      helpText: out.global.t["Code on a picture, click to update"],
+      mandatory: true,
+      pattern: "^[0-9]{4,4}$",
+      imgSrc: `${out.global.siteData.api}/api/core/captcha`
+    },
+    {
+      id: "div1",
+      type: "divider"
+    },
+    {
+      id: "btn1",
+      type: "button",
+      label: out.global.t["Continue"],
+      buttonType: "submit",
+      css: "uk-button uk-button-primary"
+    }
+  ] i18n={
+    ERR_MANDATORY: out.global.t["Mandatory field"],
+    ERR_FORMAT: out.global.t["Invalid format"],
+    ERR_SHOULD_MATCH: out.global.t["Does not match"]
+  }/>
+</div>
