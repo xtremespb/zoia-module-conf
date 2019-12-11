@@ -1,9 +1,19 @@
 import axios from 'axios';
+import fs from 'fs-extra';
+import path from 'path';
 import site from '../../../../shared/lib/site';
 import locale from '../../../../shared/lib/locale';
 import template from './template.marko';
 import templates from '../../../../etc/templates.json';
 import i18n from '../../../../shared/utils/i18n-node';
+
+let config;
+try {
+    config = fs.readJSONSync(path.resolve(`${__dirname}/../etc/conf.json`));
+} catch (e) {
+    console.log(e);
+    process.exit(1);
+}
 
 export default fastify => ({
     async handler(req, rep) {
@@ -32,14 +42,16 @@ export default fastify => ({
             }
             const siteData = await site.getSiteData(req, fastify, null, null, siteMeta.nav);
             siteData.user = siteMeta.user || {};
-            siteData.title = `${t['Post Article']} | ${siteData.title}`;
+            siteData.title = `${t['Publish Article']} | ${siteData.title}`;
             const render = (await template.render({
                 $global: {
                     serializedGlobals: {
                         siteData: true,
                         t: true,
-                        cookieOptions: true
+                        cookieOptions: true,
+                        config: true
                     },
+                    config,
                     siteData,
                     t,
                     cookieOptions: fastify.zoiaConfig.cookieOptions,

@@ -1,0 +1,17 @@
+<email>
+  <p>${out.global.t["A new article publication request has been accepted."]}</p>
+  <p>
+    <b>${out.global.t["Author Name"]}:</b>&nbsp;${out.global.articleData.name3p}<br/>
+    <if(out.global.articleData.nameCo3p)>
+      <b>${out.global.t["Co-Author Name"]}:</b>&nbsp;${out.global.articleData.nameCo3p}<br/>
+    </if>
+    <b>${out.global.t["Article Title"]}:</b>&nbsp;${out.global.articleData.title}<br/>
+  </p>
+  <p>
+    <b>${out.global.t["Characters count"]}:</b>&nbsp;${out.global.articleData.charsCount}<br/>
+    <b>${out.global.t["Cost"]}:</b>&nbsp;${out.global.articleData.cost}&nbsp;${out.global.config.currency}
+  </p>
+  <p class="text-smaller">
+    ${out.global.t["A processed article content has been attached to this mail as well as archived on server. Please contact webmaster to get all articles as a ZIP archive."]}
+  </p>
+</email>

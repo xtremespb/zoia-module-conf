@@ -1,87 +1,262 @@
 import cookies from "zoia-cookies"
 import uuid from "uuid/v1"
+import textProcessor from "../../../../utils/textProcessor"
+import UIkit from "../../../../../../shared/utils/uikit-node"
 
 class {
   onCreate(input, out) {
     this.t = out.global.t;
+    this.config = out.global.config;
+    this.state = {
+      articleAuthor: "",
+      articleAuthorCo: "",
+      articleTitle: "",
+      articleContent: "",
+      articleBibliography: "",
+      charsCount: 0,
+      cost: 0,
+      requestSent: false
+    };
+  }
+  onMount() {
+    try {
+      this.postArticleForm = this.getComponent("postArticleForm");
+      this.previewDialog = this.getComponent("previewDialog");
+    } catch (e) {
+      // Ignore
+    }
   }
   onSaveError(res) {}
   onSaveSuccess() {}
+  collectData() {
+    const serializedData = this.postArticleForm.serialize();
+    const lastName = `${serializedData.lastName.charAt(0).toUpperCase()}${serializedData.lastName.slice(1)}`;
+    const fullName = textProcessor.processAuthor(`${lastName} ${serializedData.firstName[0].toUpperCase()}.${serializedData.middleName ? `${serializedData.middleName[0].toUpperCase()}.` : ""}`);
+    let fullNameCo;
+    if (serializedData.lastNameCo) {
+      const lastNameCo = `${serializedData.lastNameCo.charAt(0).toUpperCase()}${serializedData.lastNameCo.slice(1)}`;
+      fullNameCo = textProcessor.processAuthor(`${lastNameCo} ${serializedData.firstNameCo[0].toUpperCase()}.${serializedData.middleNameCo ? `${serializedData.middleNameCo[0].toUpperCase()}.` : null}`);
+    }
+    const title = textProcessor.processTitle(serializedData.articleTitle);
+    const content = textProcessor.processArticle(serializedData.articleContent);
+    const bibliography = textProcessor.processBibliography(serializedData.articleBibliography, content);
+    const bibliographyHeader = bibliography ? this.t["Bibliography"] : "";
+    const data = {
+      fullName,
+      fullNameCo,
+      title,
+      content,
+      bibliography,
+      bibliographyHeader
+    };
+    data.charsCount = textProcessor.countChars(data);
+    data.cost = parseInt(data.charsCount * this.config.costPerChar, 10);
+    return data;
+  }
+  async onButtonClick(data) {
+    switch (data.id) {
+      case "btnCalculate":
+        if (this.postArticleForm.validate()) {
+          return true;
+        }
+        const data = this.collectData();
+        if (Array.isArray(data.bibliography)) {
+          return UIkit.modal.alert(`<p class="uk-text-danger">${this.t["The following bibliography items do not have a reference in article body"]}:</p><p>${data.bibliography.join("<br/>")}</p>`, { labels: { ok: this.t["OK"] } });
+        }
+        this.setState("articleAuthor", data.fullName);
+        this.setState("articleAuthorCo", data.fullNameCo || "");
+        this.setState("articleTitle", data.title);
+        this.setState("articleContent", data.content);
+        this.setState("articleBibliography", data.bibliography);
+        this.setState("charsCount", data.charsCount);
+        this.setState("cost", data.cost);
+        this.once("update", this.previewDialog.show);
+        this.previewDialog.show();
+        break;
+      case "btnPublish":
+        if (this.postArticleForm.validate()) {
+          return true;
+        }
+        UIkit.modal.confirm(`<p>${this.t['Your article is about to be published. Be sure to click "Preview" button to check your article before publishing and get publication cost.']}</p><p>${this.t["Do you wish to proceed?"]}</p>`, { labels: { ok: this.t["Publish"], cancel: this.t["Cancel"] } }).then(
+          () => {
+            const data = this.collectData();
+            this.setState("charsCount", data.charsCount);
+            this.setState("cost", data.cost);
+            const serializedData = this.postArticleForm.serialize();
+            this.postArticleForm.submitForm(serializedData);
+          },
+          () => {}
+        );
+        break;
+    }
+  }
+  onSaveError(res) {
+    this.postArticleForm.captchaUpdate("captcha");
+    if (res && res.data && res.data.errorCode && res.data.statusCode === 400) {
+      let message;
+      switch (res.data.errorCode) {
+        case 1:
+          message = this.t["Invalid captcha code entered"];
+          break;
+        default:
+          message = this.t["Could not complete the publication of your article"];
+      }
+      return this.postArticleForm.setErrorMessage(message);
+    }
+    this.postArticleForm.setErrorMessage(this.t["Could not connect to the server"]);
+    window.scrollTo(0, 0);
+  }
+  onSaveSuccess() {
+    this.setState("requestSent", true);
+  }
 }
 
 <div>
-  <zoiaForm key="postArticleForm" data=[
-    [
+  <previewDialog key="previewDialog" articleAuthor=state.articleAuthor articleAuthorCo=state.articleAuthorCo articleTitle=state.articleTitle articleContent=state.articleContent articleBibliography=state.articleBibliography charsCount=state.charsCount cost=state.cost t=out.global.t config=out.global.config/>
+  <if(state.requestSent)>
+    <div class="uk-margin-top">${out.global.t["Your article has been sent for a moderation. Conference organizing committee representatives will contact you if any clarifications are needed."]}</div>
+    <div class="uk-margin-top">
+      ${out.global.t["Characters count"]}:&nbsp;${state.charsCount}<br/>
+      ${out.global.t["Cost"]}:&nbsp;${state.cost}&nbsp;${out.global.config.currency}
+    </div>
+  </if>
+  <else>
+    <div class="uk-margin-top uk-margin-bottom">${out.global.t["Please use the form below to publish your article. Fields marked with asterisks are required. Please pay particular attention to the instructions for filling out the fields."]}</div>
+    <zoiaForm key="postArticleForm" data=[
       {
-        id: "firstName",
+        id: "hint1",
+        type: "hint",
+        label: out.global.t["Article Author"]
+      },
+      [
+        {
+          id: "firstName",
+          type: "text",
+          label: out.global.t["First Name"],
+          css: "uk-input uk-form-width-medium",
+          mandatory: true,
+          autoFocus: true,
+          minLength: 1,
+          maxLength: 50
+        },
+        {
+          id: "middleName",
+          type: "text",
+          label: out.global.t["Middle Name"],
+          css: "uk-input uk-form-width-medium",
+          maxLength: 50
+        },
+        {
+          id: "lastName",
+          type: "text",
+          label: out.global.t["Last Name"],
+          css: "uk-input uk-form-width-medium",
+          mandatory: true,
+          minLength: 1,
+          maxLength: 50
+        }
+      ],
+      {
+        id: "hint2",
+        type: "hint",
+        label: out.global.t["Article Co-Author"]
+      },
+      [
+        {
+          id: "firstNameCo",
+          type: "text",
+          label: out.global.t["First Name"],
+          css: "uk-input uk-form-width-medium",
+          maxLength: 50
+        },
+        {
+          id: "middleNameCo",
+          type: "text",
+          label: out.global.t["Middle Name"],
+          css: "uk-input uk-form-width-medium",
+          maxLength: 50
+        },
+        {
+          id: "lastNameCo",
+          type: "text",
+          label: out.global.t["Last Name"],
+          css: "uk-input uk-form-width-medium",
+          maxLength: 50
+        }
+      ],
+      {
+        id: "hint3",
+        type: "hint",
+        label: out.global.t["Article Metadata and Content"]
+      },
+      {
+        id: "articleTitle",
         type: "text",
-        label: out.global.t["First Name"],
-        css: "uk-input uk-form-width-medium",
+        label: out.global.t["Article Title"],
+        css: "uk-input uk-form-width-large",
         mandatory: true,
-        autoFocus: true
+        minLength: 1,
+        maxLength: 250
       },
       {
-        id: "middleName",
-        type: "text",
-        label: out.global.t["Middle Name"],
-        css: "uk-input uk-form-width-medium",
-        mandatory: true
+        id: "articleContent",
+        type: "textarea",
+        label: out.global.t["Content"],
+        css: "uk-textarea uk-width-1-1",
+        rows: 13,
+        mandatory: true,
+        minLength: 1,
+        maxLength: 100000,
+        helpText: out.global.t["Paragraphs are only separated using the Enter key. There should be no hyphenation in the text. The red line is automatic. The use of tables, italics, underlines, bold, as well as subscripts and footnotes is not possible due to further formatting of the text. If necessary, explanations are entered into the main text with or without parentheses. All non-Russian language words are enclosed in quotation marks (“”), and are not in italics."]
       },
       {
-        id: "lastName",
-        type: "text",
-        label: out.global.t["Last Name"],
-        css: "uk-input uk-form-width-medium",
-        mandatory: true
+        id: "articleBibliography",
+        type: "textarea",
+        label: out.global.t["Bibliography"],
+        css: "uk-textarea uk-width-1-1",
+        rows: 7,
+        maxLength: 10000,
+        helpText: out.global.t["The bibliography is compiled in alphabetical order: first, non-Russian sources, then Russian ones. References in the text shall ne as following: [1, p. 54], where the first digit is the number from the bibliography; after an abbreviation “p.” (page), the page number is indicated. If the source is non-Russian, the pages are indicated as “p” or “s”: [1, p. 54]. If it is necessary to clarify the volume, the design is as following: [1, v. 2, p. 54]. Between “s.” and a page number there is a space."]
+      },
+      {
+        id: "captcha",
+        type: "captcha",
+        label: out.global.t["Captcha"],
+        css: "uk-input uk-form-width-small",
+        helpText: out.global.t["Code on a picture, click to update"],
+        mandatory: true,
+        pattern: "^[0-9]{4,4}$",
+        imgSrc: `${out.global.siteData.api}/api/core/captcha`
+      },
+      {
+        id: "div1",
+        type: "divider"
+      },
+      [
+        {
+          id: "btnCalculate",
+          type: "button",
+          label: out.global.t["Preview"],
+          buttonType: "button",
+          css: "uk-button uk-button-secondary"
+        },
+        {
+          id: "btnPublish",
+          type: "button",
+          label: out.global.t["Publish"],
+          buttonType: "button",
+          css: "uk-button uk-button-primary"
+        }
+      ]
+    ] i18n={
+      ERR_MANDATORY: out.global.t["Mandatory field"],
+      ERR_FORMAT: out.global.t["Invalid format"],
+      ERR_SHOULD_MATCH: out.global.t["Does not match"]
+    } on-button-click("onButtonClick") save={
+      url: `${out.global.siteData.api}/api/conf/publishArticle`,
+      extras: {
+        language: out.global.siteData.language
       }
-    ],
-    {
-      id: "articleTitle",
-      type: "text",
-      label: out.global.t["Article Title"],
-      css: "uk-input uk-form-width-large",
-      mandatory: true
-    },
-    {
-      id: "articleContent",
-      type: "textarea",
-      label: out.global.t["Content"],
-      css: "uk-textarea uk-width-1-1",
-      rows: 8,
-      mandatory: true
-    },
-    {
-      id: "articleBibliography",
-      type: "textarea",
-      label: out.global.t["Bibliography"],
-      css: "uk-textarea uk-form-width-large",
-      rows: 4,
-      mandatory: true
-    },
-    {
-      id: "captcha",
-      type: "captcha",
-      label: out.global.t["Captcha"],
-      css: "uk-input uk-form-width-small",
-      helpText: out.global.t["Code on a picture, click to update"],
-      mandatory: true,
-      pattern: "^[0-9]{4,4}$",
-      imgSrc: `${out.global.siteData.api}/api/core/captcha`
-    },
-    {
-      id: "div1",
-      type: "divider"
-    },
-    {
-      id: "btn1",
-      type: "button",
-      label: out.global.t["Continue"],
-      buttonType: "submit",
-      css: "uk-button uk-button-primary"
-    }
-  ] i18n={
-    ERR_MANDATORY: out.global.t["Mandatory field"],
-    ERR_FORMAT: out.global.t["Invalid format"],
-    ERR_SHOULD_MATCH: out.global.t["Does not match"]
-  }/>
+    } on-save-error("onSaveError") on-save-success("onSaveSuccess")/>
+  </else>
 </div>

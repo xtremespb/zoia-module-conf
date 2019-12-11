@@ -1,0 +1,59 @@
+import UIkit from "../../../../../../shared/utils/uikit-node"
+
+style {
+  .za-cn-header2 {
+    font-size: 120%;
+  }
+  .za-cn-header1 {
+    font-size: 200%;
+  }
+}
+
+class {
+  onCreate() {
+    this.show = this.showDialog;
+    this.hide = this.hideDialog;
+  }
+  onMount() {
+    if (UIkit.modal) {
+      this.previewDialog = UIkit.modal("#previewDialog", {
+        bgClose: true,
+        escClose: true
+      });
+    }
+  }
+  showDialog() {
+    return new Promise(resolve => {
+      this.previewDialog.show().then(() => resolve());
+    });
+  }
+  hideDialog() {
+    this.previewDialog.hide();
+  }
+}
+
+<div style="display:none">
+  <div id="previewDialog" class="uk-modal-container">
+    <div class="uk-modal-dialog">
+      <button class="uk-modal-close-default" type="button" uk-close/>
+      <div class="uk-modal-header">
+        <div class="uk-title-head">${input.t["Preview"]}</div>
+      </div>
+      <div class="uk-modal-body" uk-overflow-auto>
+        <div class="za-cn-header2">${input.articleAuthor}${input.articleAuthorCo}</div>
+        <div class="za-cn-header1 uk-heading-divider">${input.articleTitle}</div>
+        <div class="uk-margin-top">$!{input.articleContent}</div>
+        <if(input.articleBibliography)>
+          <p>${input.t["Bibliography"]}</p>
+          <div class="uk-margin-top">$!{input.articleBibliography}</div>
+        </if>
+      </div>
+      <div class="uk-modal-footer">
+        <div class="uk-text-small">${input.t["Characters count"]}:&nbsp;${input.charsCount}</div>
+        <div>
+          ${input.t["Cost"]}:&nbsp;<span class="uk-badge">${input.cost}&nbsp;${input.config.currency}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
