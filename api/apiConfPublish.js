@@ -5,8 +5,6 @@ import {
 import truncate from 'underscore.string/truncate';
 import capitalize from 'underscore.string/capitalize';
 import path from 'path';
-import locale from '../../../shared/lib/locale';
-import mailer from '../../../shared/lib/email';
 import mailArticle from '../email/article/index.marko';
 import auth from '../../../shared/lib/auth';
 import I18N from '../../../shared/utils/i18n-node';
@@ -95,13 +93,8 @@ export default fastify => ({
             };
         }
         if (req.validationError) {
-            req.log.error({
-                ip: req.ip,
-                path: req.urlData().path,
-                query: req.urlData().query,
-                error: req.validationError.message
-            });
-            return rep.code(400).send(JSON.stringify(req.validationError));
+            rep.logError(req, req.validationError.message);
+            return rep.sendBadRequestException(rep, 'Request validation error', req.validationError);
         }
         // End of Validation
         // Processing
@@ -110,17 +103,11 @@ export default fastify => ({
             const i18n = I18N('conf')[req.body.language];
             // Check captcha
             if (!await auth.validateCaptcha(req.body.captchaSecret, req.body.captcha, fastify, this.mongo.db)) {
-                return rep.code(200)
-                    .send(JSON.stringify({
-                        statusCode: 400,
-                        errorCode: 1,
-                        message: 'Invalid Captcha',
-                        errors: {
-                            default: {
-                                captcha: ''
-                            }
-                        }
-                    }));
+                return rep.sendBadRequestError(rep, 'Invalid Captcha', {
+                    default: {
+                        captcha: ''
+                    }
+                }, 1);
             }
             // Prepare article data
             const lastName = `${req.body.lastName.charAt(0).toUpperCase()}${req.body.lastName.slice(1)}`;
@@ -134,8 +121,8 @@ export default fastify => ({
                 nameCo3p = textProcessor.processAuthor(`${capitalize(lastNameCo)} ${capitalize(req.body.firstNameCo)} ${req.body.middleNameCo ? capitalize(req.body.middleNameCo) : ''}`);
             }
             const title = textProcessor.processTitle(req.body.articleTitle);
-            const content = textProcessor.processArticle(req.body.articleContent).replace(/<br\/>/gm, '\n');
-            const bibliography = textProcessor.processBibliography(req.body.articleBibliography, content).replace(/<br\/>/gm, '\n');
+            const content = textProcessor.processArticle(req.body.articleContent);
+            const bibliography = textProcessor.processBibliography(req.body.articleBibliography, content);
             const bibliographyHeader = bibliography ? 'Литература' : '';
             const articleData = {
                 name3p,
@@ -154,7 +141,7 @@ export default fastify => ({
             const filename = `${truncate(slugify(lastName).replace(/[^a-z]/ig, ''), 20, '')}_${parseInt(new Date().getTime() / 1000, 10)}.txt`;
             await fs.writeFile(`${__dirname}/../static/conf/${filename}`, fileContent);
             // Prepare and send mail
-            const prefix = locale.getPrefixForLanguage(req.body.language, fastify);
+            const prefix = req.getPrefixForLanguage(req.body.language, fastify);
             const subj = 'New article publication request';
             const render = (await mailArticle.render({
                 $global: {
@@ -172,25 +159,12 @@ export default fastify => ({
                 filename,
                 content: Buffer.from(fileContent, 'utf-8')
             }];
-            await mailer.sendMail(config.email, i18n[subj], htmlMail, '', req.body.language, attachments, fastify);
+            await rep.sendMail(fastify, config.email, i18n[subj], htmlMail, '', req.body.language, attachments);
             // Send response
-            return rep.code(200)
-                .send(JSON.stringify({
-                    statusCode: 200
-                }));
+            return rep.sendSuccessJSON(rep);
         } catch (e) {
-            req.log.error({
-                ip: req.ip,
-                path: req.urlData().path,
-                query: req.urlData().query,
-                error: e && e.message ? e.message : 'Internal Server Error',
-                stack: fastify.zoiaConfigSecure.stackTrace && e.stack ? e.stack : null
-            });
-            return rep.code(500).send(JSON.stringify({
-                statusCode: 500,
-                error: 'Internal server error',
-                message: e && e.message ? e.message : null
-            }));
+            rep.logError(req, null, e);
+            return rep.sendInternalServerError(rep, e.message);
         }
     }
 });

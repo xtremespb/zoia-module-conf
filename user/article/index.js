@@ -11,6 +11,7 @@ let config;
 try {
     config = fs.readJSONSync(path.resolve(`${__dirname}/../etc/conf.json`));
 } catch (e) {
+    // eslint-disable-next-line no-console
     console.log(e);
     process.exit(1);
 }

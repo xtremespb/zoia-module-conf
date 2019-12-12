@@ -40,11 +40,11 @@ class {
         <div class="uk-title-head">${input.t["Preview"]}</div>
       </div>
       <div class="uk-modal-body" uk-overflow-auto>
-        <div class="za-cn-header2">${input.articleAuthor}${input.articleAuthorCo}</div>
+        <div class="za-cn-header2">${input.articleAuthor}${input.articleAuthorCo ? `, ${input.articleAuthorCo}` : ""}</div>
         <div class="za-cn-header1 uk-heading-divider">${input.articleTitle}</div>
         <div class="uk-margin-top">$!{input.articleContent}</div>
         <if(input.articleBibliography)>
-          <p>${input.t["Bibliography"]}</p>
+          <p>Литература</p>
           <div class="uk-margin-top">$!{input.articleBibliography}</div>
         </if>
       </div>

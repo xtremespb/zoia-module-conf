@@ -40,7 +40,7 @@ class {
     const title = textProcessor.processTitle(serializedData.articleTitle);
     const content = textProcessor.processArticle(serializedData.articleContent);
     const bibliography = textProcessor.processBibliography(serializedData.articleBibliography, content);
-    const bibliographyHeader = bibliography ? this.t["Bibliography"] : "";
+    const bibliographyHeader = bibliography ? "Литература" : "";
     const data = {
       fullName,
       fullNameCo,
@@ -66,8 +66,8 @@ class {
         this.setState("articleAuthor", data.fullName);
         this.setState("articleAuthorCo", data.fullNameCo || "");
         this.setState("articleTitle", data.title);
-        this.setState("articleContent", data.content);
-        this.setState("articleBibliography", data.bibliography);
+        this.setState("articleContent", data.content.replace(/\n/gm, "<br/>"));
+        this.setState("articleBibliography", data.bibliography.replace(/\n/gm, "<br/>"));
         this.setState("charsCount", data.charsCount);
         this.setState("cost", data.cost);
         this.once("update", this.previewDialog.show);

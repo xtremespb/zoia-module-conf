@@ -21,7 +21,7 @@ export default {
     processArticle: text => {
         const linesArr = lines(text);
         const linesArrProcessed = linesArr.map(line => clean(stripTags(line))).filter(line => line && line.length);
-        return unescapeHTML(typograf.execute(linesArrProcessed.join('<br/>')));
+        return unescapeHTML(typograf.execute(linesArrProcessed.join('\n')));
     },
     processBibliography: (biblio, article) => {
         const linesArr = lines(biblio);
@@ -31,6 +31,6 @@ export default {
             const rx = new RegExp(`\\[${i},`);
             return article.match(rx) ? null : n;
         }).filter(i => i) : null;
-        return errors && errors.length ? errors : unescapeHTML(typograf.execute(linesArrProcessed.join('<br/>')));
+        return errors && errors.length ? errors : unescapeHTML(typograf.execute(linesArrProcessed.join('\n')));
     },
 };
